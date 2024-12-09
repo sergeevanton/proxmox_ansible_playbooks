@@ -1,2 +1,2 @@
 [proxmox]
-1.2.4.5 ansible_user=YOUR_PROXMOX_ADMIN_LOGIN
+1.2.4.5 ansible_user=root
