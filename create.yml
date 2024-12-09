@@ -37,18 +37,6 @@
       set_fact:
         new_container_hostname: "container-{{ new_container_vmid }}"
 
-    - name: Update container hostname
-      community.general.proxmox:
-        api_user: "{{ user }}"
-        api_token_id: "{{ token_id }}"
-        api_token_secret: "{{ token_secret }}"
-        api_host: "{{ host }}"
-        vmid: "{{ new_container_vmid }}"
-        node: "{{ node }}"
-        hostname: "{{ new_container_hostname }}"
-        state: present
-      delegate_to: localhost
-
     - name: Start container
       community.general.proxmox:
         api_user: "{{ user }}"
