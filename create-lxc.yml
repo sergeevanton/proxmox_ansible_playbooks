@@ -6,50 +6,35 @@
     - group_vars/all.yml
 
   tasks:
-    - name: Generate random hostname
-      set_fact:
-        random_hostname: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=6') }}"
-
-    - name: Create container
+    - name: Create LXC container
       community.general.proxmox:
         api_user: "{{ user }}"
         api_token_id: "{{ token_id }}"
         api_token_secret: "{{ token_secret }}"
         api_host: "{{ host }}"
         node: "{{ node }}"
-        hostname: "{{ random_hostname }}"
+        hostname: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=6') }}"
         ostemplate: "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
         cores: 1
         memory: 512
         swap: 512
-        mounts: {rootfs: "VM:5"}
+        disk: "VM:5"                  
         password: "{{ lxc_password }}"
-        netif: {net0: "name=eth0,ip=dhcp,bridge=vmbr0,firewall=0"}
-        features: "nesting=1"
+        netif:
+          net0: "name=eth0,ip=dhcp,bridge=vmbr0,firewall=0"
+        features: 
+          - nesting=1
+        timeout: 600
       delegate_to: localhost
       register: container
 
-    - name: Extract VMID of the newly created container
-      set_fact:
-        new_container_vmid: "{{ container.id | default(container.vmid) }}"
-        
-    - name: Start container
+    - name: Start the LXC container
       community.general.proxmox:
         api_user: "{{ user }}"
         api_token_id: "{{ token_id }}"
         api_token_secret: "{{ token_secret }}"
         api_host: "{{ host }}"
-        vmid: "{{ new_container_vmid }}"
+        vmid: "{{ container.id | default(container.vmid) }}"
         node: "{{ node }}"
         state: started
       delegate_to: localhost
-
-    - name: Wait for SSH port
-      wait_for:
-        port: "{{ ansible_port | default(22) }}"
-        host: "{{ ansible_host }}"
-        timeout: 30  # seconds
-      delegate_to: localhost
-
-    - name: Gather facts
-      ansible.builtin.setup:
