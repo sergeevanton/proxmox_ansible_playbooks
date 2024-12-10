@@ -1,28 +1,40 @@
 ---
 - name: Create and manage Proxmox LXC container
-  hosts: "{{ host }}"
+  hosts: proxmox_host
   gather_facts: false
   vars_files:
     - group_vars/all.yml
 
+  vars:
+    proxmox:
+      api_user: "{{ user }}"
+      api_token_id: "{{ token_id }}"
+      api_token_secret: "{{ token_secret }}"
+      api_host: "{{ host }}"
+      node: "{{ node }}"
+
   tasks:
+    - name: Get container IP from the hosts
+      ansible.builtin.set_fact:
+        container_ip: "{{ hostvars['prometheus_host'].ansible_host }}"
+
     - name: Create LXC container
       community.general.proxmox:
-        api_user: "{{ user }}"
-        api_token_id: "{{ token_id }}"
-        api_token_secret: "{{ token_secret }}"
-        api_host: "{{ host }}"
-        node: "{{ node }}"
-        hostname: "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=6') }}"
+        api_user: "{{ proxmox.api_user }}"
+        api_token_id: "{{ proxmox.api_token_id }}"
+        api_token_secret: "{{ proxmox.api_token_secret }}"
+        api_host: "{{ proxmox.api_host }}"
+        node: "{{ proxmox.node }}"
+        hostname: "prometheus"
         ostemplate: "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
         cores: 1
-        memory: 512
+        memory: 2048
         swap: 512
-        disk: "VM:5"                  
+        disk: "VM:5"
         password: "{{ lxc_password }}"
         netif:
-          net0: "name=eth0,ip=dhcp,bridge=vmbr0,firewall=0"
-        features: 
+          net0: "name=eth0,gw=10.123.254.1,ip={{ container_ip }}/24,bridge=vmbr0"
+        features:
           - nesting=1
         timeout: 600
       delegate_to: localhost
@@ -30,11 +42,20 @@
 
     - name: Start the LXC container
       community.general.proxmox:
-        api_user: "{{ user }}"
-        api_token_id: "{{ token_id }}"
-        api_token_secret: "{{ token_secret }}"
-        api_host: "{{ host }}"
+        api_user: "{{ proxmox.api_user }}"
+        api_token_id: "{{ proxmox.api_token_id }}"
+        api_token_secret: "{{ proxmox.api_token_secret }}"
+        api_host: "{{ proxmox.api_host }}"
+        node: "{{ proxmox.node }}"
         vmid: "{{ container.id | default(container.vmid) }}"
-        node: "{{ node }}"
         state: started
       delegate_to: localhost
+
+    - name: Wait for the LXC container to be reachable
+      ansible.builtin.wait_for:
+        host: "{{ container_ip }}"
+        port: 22
+        sleep: 3
+        connect_timeout: 5
+        timeout: 60
+        state: started
