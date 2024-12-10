@@ -1,2 +1,5 @@
 [proxmox]
-1.2.4.5 ansible_user=root
+proxmox_host ansible_host=1.2.3.4 ansible_user=root
+
+[prometheus]
+prometheus_host ansible_host=1.2.3.5 ansible_user=root
