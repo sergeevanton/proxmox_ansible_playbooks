@@ -32,11 +32,7 @@
     - name: Extract VMID of the newly created container
       set_fact:
         new_container_vmid: "{{ container.id | default(container.vmid) }}"
-
-    - name: Generate hostname for the container
-      set_fact:
-        new_container_hostname: "container-{{ new_container_vmid }}"
-
+        
     - name: Start container
       community.general.proxmox:
         api_user: "{{ user }}"
